@@ -28,27 +28,33 @@ def bindata(binx,biny,x,y,X):
     returns data Xnew binned into binx and biny bins
     meanX,varX,nX=bindata(binx,biny,x,y,X)
     """
+
+    import numpy as np
+
     M = size(biny,0)-1
     N = size(binx,0)-1
+
+    good = ~np.isnan(x+y+X)
+    x=x[good]
+    y=y[good]
+    X=X[good]
     
-    
-    meanX = zeros((M,N))
-    varX = zeros((M,N))
-    nX = zeros((M,N))
+    meanX = np.zeros((M,N))
+    varX = np.zeros((M,N))
+    nX = np.zeros((M,N))
     
     #print shape(binx)
     #print shape(arange(0,N,1.0))
     
-    indx = floor(interp(x,binx,arange(0,N+1,1.0)))
+    indx = floor(np.interp(x,binx,arange(0,N+1,1.0)))
     indx[indx<0]=0
     indx[indx>N-1]=N-1
 
-    indy = floor(interp(y,biny,arange(0,M+1,1.0)))
-    #print shape(indy)
+    indy = floor(np.interp(y,biny,arange(0,M+1,1.0)))
     #print shape(X)
     indy[indy<0]=0
     indy[indy>M-1]=M-1
-    for ind in range(len(x)):
+    for ind in range(len(X)):
         meanX[indy[ind],indx[ind]]+=X[ind]
         nX[indy[ind],indx[ind]]+=1
     nX[nX==0.0]=NaN;
@@ -58,9 +64,9 @@ def bindata(binx,biny,x,y,X):
         varX[indy[ind],indx[ind]]+=(meanX[indy[ind],indx[ind]]-X[ind])**2
     varX=varX/nX
     # mask
-    meanX=ma.masked_where(isnan(nX),meanX)
-    nX=ma.masked_where(isnan(nX),nX)
-    varX=ma.masked_where(isnan(nX),varX)
+    meanX=np.ma.masked_where(isnan(nX),meanX)
+    nX=np.ma.masked_where(isnan(nX),nX)
+    varX=np.ma.masked_where(isnan(nX),varX)
     
     
     return meanX,varX,nX

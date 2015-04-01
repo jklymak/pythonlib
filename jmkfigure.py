@@ -61,7 +61,7 @@ def jmkprint(fname,pyname,dirname='doc'):
 
 def tsdiagramjmk(salt,temp,cls=[]):
     import numpy as np
-    import seawater.gibbs as gsw
+    import seawater
     import matplotlib.pyplot as plt
      
      
@@ -86,7 +86,7 @@ def tsdiagramjmk(salt,temp,cls=[]):
     # Loop to fill in grid with densities
     for j in range(0,int(ydim)):
         for i in range(0, int(xdim)):
-            dens[j,i]=gsw.rho(si[i],ti[j],0)
+            dens[j,i]=seawater.dens(si[i],ti[j],0)
      
     # Substract 1000 to convert to sigma-t
     dens = dens - 1000
@@ -133,5 +133,151 @@ def pcolormeshRdBu(x,y,z,**kwargs):
     # def pcolormeshRdBu(x,y,z,**kwargs):
     return pcolormesh(x,y,z,rasterized=True,cmap=cm.RdBu_r,**kwargs)    
 
+####################
+def gmtColormap(fileName,GMTPath = '~/python/cmaps/'):
+      """
+      gmtColormap(fileName,GMTPath='~/python/cmaps/')
+      
+      Returns a dict for use w/ LinearSegmentedColormap
+
+      cdict = gmtcolormapPylab.gmtcolormapPylab('spectrum-light')
+      colormap = pylab.cm.colors.LinearSegmentedColormap('spectrum-light',cdict)
+      """
+      import colorsys
+      import numpy as N
+      filePath = GMTPath+"/"+ fileName +".cpt"
+      try:
+          f = open(filePath)
+      except:
+          print "file ",filePath, "not found"
+          return None
+
+      lines = f.readlines()
+      f.close()
+
+      x = N.array([])
+      r = N.array([])
+      g = N.array([])
+      b = N.array([])
+      colorModel = "RGB"
+      for l in lines:
+          ls = l.split()
+          if l[0] == "#":
+             if ls[-1] == "HSV":
+                 colorModel = "HSV"
+                 continue
+             else:
+                 continue
+          if ls[0] == "B" or ls[0] == "F" or ls[0] == "N":
+             pass
+          else:
+              x=N.append(x,float(ls[0]))
+              r=N.append(r,float(ls[1]))
+              g=N.append(g,float(ls[2]))
+              b=N.append(b,float(ls[3]))
+              xtemp = float(ls[4])
+              rtemp = float(ls[5])
+              gtemp = float(ls[6])
+              btemp = float(ls[7])
+              
+
+      x=N.append(x,xtemp)
+      r=N.append(r,rtemp)
+      g=N.append(g,gtemp)
+      b=N.append(b,btemp)
+
+      nTable = len(r)
+      if colorModel == "HSV":
+         for i in range(r.shape[0]):
+             rr,gg,bb = colorsys.hsv_to_rgb(r[i]/360.,g[i],b[i])
+             r[i] = rr ; g[i] = gg ; b[i] = bb
+      if colorModel == "HSV":
+         for i in range(r.shape[0]):
+             rr,gg,bb = colorsys.hsv_to_rgb(r[i]/360.,g[i],b[i])
+             r[i] = rr ; g[i] = gg ; b[i] = bb
+      if colorModel == "RGB":
+          r = r/255.
+          g = g/255.
+          b = b/255.
+      print shape(x)
+      xNorm = (x - x[0])/(x[-1] - x[0])
+
+      red = []
+      blue = []
+      green = []
+      for i in range(len(x)):
+          red.append([xNorm[i],r[i],r[i]])
+          green.append([xNorm[i],g[i],g[i]])
+          blue.append([xNorm[i],b[i],b[i]])
+      colorDict = {"red":red, "green":green, "blue":blue}
+      return (colorDict)    
     
+####################
+def gmtcmap(fileName,GMTPath  = '/Users/jklymak/python/cmaps/'):
+    import matplotlib.pylab as pylab
     
+    cdict=gmtColormap(fileName,GMTPath)
+    colormap = pylab.cm.colors.LinearSegmentedColormap(fileName,cdict)
+    return colormap
+          
+#####################
+def colorbarRight(pcm,ax,fig,shrink=0.7,width=0.025,gap=0.03,**kwargs):
+    '''
+    def colorbarRight(pcm,ax,fig,shrink=0.7,width=0.05,gap=0.02)
+    
+    Position colorbar to the right of axis 'ax' with colors from artist pcm.
+    ax can be an array of axes such as that returned by "subplots".
+    
+    ax can also be a GridSpec, in which case the colorbar is centered to the
+    right of the grid.  
+    
+    Defaults might no leave enough room for the colorbar on the right side, so 
+    you should probably use subplots_adjust() or gridspec_update() to make more 
+    space to the right:
+    
+    # with subplots:
+    import matplotlib.pyplot as plt
+    fig,ax=plt.subplots(2,2)
+    fig.subplots_adjust(right=0.87)
+    for axx in ax.flatten():
+        pcm=axx.pcolormesh(rand(10,10))
+    colorbarRight(pcm,ax,fig,extend='max')
+    
+    # with gridspec:
+    import matplotlib.gridspec 
+    import matplotlib.pyplot as plt
+    fig=plt.figure()
+
+    gs = gridspec.GridSpec(2,2)
+    gs.update(right=0.87)
+    for ii in range(2):
+        for jj in range(2):
+            ax=plt.subplot(gs[ii,jj])
+            pcm=ax.pcolormesh(rand(10,10))
+    colorbarRight(pcm,gs,fig,extend='max')
+    '''
+    import numpy as np
+
+    if type(ax) is matplotlib.gridspec.GridSpec:
+        # gridspecs are different than axes:
+        pos = ax.get_grid_positions(fig)
+        y0 = pos[0][-1]
+        y1 = pos[1][0]
+        x1 = pos[3][-1]
+    else: 
+        if ~(type(ax) is np.ndarray):
+            # these are supposedly axes:
+            ax=np.array(ax)
+        # get max x1, min y0 and max y1
+        y1 = 0.
+        y0 = 1.
+        x1=0.
+        for axx in ax.flatten():
+            pos=axx.get_position()
+            x1=np.max([pos.x1,x1])
+            y1=np.max([pos.y1,y1])
+            y0=np.min([pos.y0,y0])
+    height = y1-y0
+    pos2 = [x1 + gap, y0 + (1.-shrink)*height/2.,  width, height*shrink]
+    cax=axes(position=pos2)
+    fig.colorbar(pcm,cax=cax,**kwargs)
