@@ -4,6 +4,7 @@
 # from matplotlib import rc
 from pylab import *
 import numpy
+import numpy as np
 
 def gappyinterp(tnew,t,x,maxdt):
     """
@@ -81,32 +82,38 @@ def gappy_fill(x):
             xnew[ind,toin]=interp(toin,good,x[ind,good])
     return xnew
 
-def vertModes(N2,dz): 
-    """" psi,zpsi,phi,ce=vertModes(N2,dz)
+def vertModesOld(N2,dz): 
+    """" psi,zpsi,phi,ce=vertModesOld(N2,dz)
     
+    vertModes moved to vertmodes.VertModes
+
     Compute the vertical eigen modes of the internal wave solution on a flat bottom
     
     Inputs: N2 is buoyancy frequency squared (rad^2/s^2) as an 1-D array. 
     
-            dz is a single value, and the distance (in meters) between the N2 estimates
+            dz is a single value, and the distance (in meters) between
+            the N2 estimates
             
-            If there are M values of N2, the first one is assumed to be at dz/2 deep, 
-            and the last one is H-dz/2 deep.  The water column is assumed to be H=M*dz deep. 
-            No gaps are allowed, and N2>0 everywhere.
+            If there are M values of N2, the first one is assumed to
+            be at dz/2 deep, and the last one is H-dz/2 deep.  The
+            water column is assumed to be H=M*dz deep.  No gaps are
+            allowed, and N2>0 everywhere.
             
-            Note that for M>200 or so, this gets quite slow, and you may ask why you are 
-            fitting more than 200 vertical modes.  
+            Note that for M>200 or so, this gets quite slow, and you
+            may ask why you are fitting more than 200 vertical modes.
             
-    Outputs: psi (M+1,M) is the vertical structure function at z=0,dz,2dz...H-dz,H.  Note there is 
-             one extra value compared to N2 (ie there are M+1 values in depth). psi is normalized
-             so that sum(psi^2 dz) = 1.  If you interpolate psi onto a different value of dz,
-             you probably want to renormalize.  For internal waves, psi is approriate for velocity
-             and pressure vertical structure.
+    Outputs: psi (M,M) is the horizontal structure function at
+             z=dz/2,3dz/2...H-dz/2.  psi is normalized so that
+             sum(psi^2 dz) = 1.  If you interpolate psi onto a
+             different value of dz, you probably want to renormalize.
+             For internal waves, psi is approriate for velocity and
+             pressure vertical structure.
              
-             zpsi (M+1) is the locations of the psi values in the vertical
+             zpsi (M) is the locations of the psi values in the
+             vertical
              
              phi (M+1,M) is the vertical integral of psi (phi = int psi dz) and represents 
-             the vertical velocity structure.
+             the vertical velocity structure at z = 0,dz,2dz...H
              
              ce is the non-rotating phase speed of the waves in m/s.
              
@@ -122,35 +129,41 @@ def vertModes(N2,dz):
     if size(dz)>1:
         error('dz must be a constant')
     M = shape(N2)[0]
-    
-    D = zeros((M+1,M+1))
+    # get psi:
+    D = zeros((M,M))
     # surface:
-    D[0,0] = -2./N2[0]
-    D[0,1] = 2./N2[0]
+    surffac = 1.
+    print "surffac=%f"%surffac
+    D[0,0] = -surffac/N2[0]
+    D[0,1] = surffac/N2[0]
     # interior:
-    for i in arange(1,M): 
+    for i in arange(1,M-1): 
         D[i,i-1] = 1./N2[i-1]
         D[i,i] = -1./N2[i-1]-1./N2[i]
         D[i,i+1] = 1./N2[i]
     # bottom:
-    D[-1,-2] = 2./N2[-1]
-    D[-1,-1] = -2./N2[-1]
+    D[-1,-2] = surffac/N2[-1]
+    D[-1,-1] = -surffac/N2[-1]
     D=-D/dz/dz
     ce,psi = numpy.linalg.eig(D)
     # psi is such that sum(psi^2)=1 but we want sum(psi^2 dz)=1.
     psi = psi/sqrt(dz)
     ce = 1./sqrt(ce)
     ind=argsort(-ce)
-    zpsi = arange(0.,(M+1.)*dz,dz)
+    if ce[ind][0]>50.:
+        ind = ind[1:]
+    ce = ce[ind]
+    psi = psi[:,ind]
+    zpsi = np.arange(dz/2.,M*dz,dz)
     #print shape(zpsi)
-    INT = tril(ones((M+1,M+1)));
-    INT = INT - 0.5*(eye(M+1));
+    INT = tril(ones((M,M)));
+    INT = INT - 0.5*(eye(M));
     INT[:,0] = INT[:,0] - 0.5;
     INT = INT*dz
-    phi = dot(INT,psi)
+    phi = np.zeros((M+1,len(ind)))
+    phi[1:-1,:] = np.diff(psi,axis=0)
+    phi = phi/np.sqrt(np.sum(phi**2,axis=0)*dz)
+    zphi = np.arange(0.,dz*(M+1),dz)
+    #phi=phi[:,ind[0:-2]]
     
-    ce=ce[ind[0:-2]]
-    psi=psi[:,ind[0:-2]]
-    phi=phi[:,ind[0:-2]]
-    
-    return psi,zpsi,phi,ce
+    return psi,zpsi,phi,zphi,ce
