@@ -23,12 +23,12 @@ def djmkfigure(width,vext):
     rc('figure.subplot',right=(1-rightin/wid)) 
     rc('figure.subplot',bottom=botin/height) 
 
-def jmkprint(fname,pyname,dirname='doc'):
+def jmkprint(fname,pyname,dirname='doc',dpi=150,optcopy=False,bbinch=None):
     """
     def jmkprint(fname,pyname)
     def jmkprint(fname,pyname,dirname='doc')
     """
-    import os
+    import os,shutil
     
     try:
         os.mkdir(dirname)
@@ -39,8 +39,9 @@ def jmkprint(fname,pyname,dirname='doc'):
         pwd=os.getcwd()+'/doc/'
     else:
         pwd=dirname+'/'
-    savefig(dirname+'/'+fname+'.pdf',dpi=400)
-    savefig(dirname+'/'+fname+'.png',dpi=400)
+    savefig(dirname+'/'+fname+'.pdf',dpi=dpi,bbox_inches=bbinch)
+    savefig(dirname+'/'+fname+'.png',dpi=dpi,bbox_inches=bbinch)
+    savefig(dirname+'/'+fname+'.svg',dpi=dpi,bbox_inches=bbinch)
     
     fout = open(dirname+'/'+fname+'.tex','w')
     str="""\\begin{{figure*}}[htbp]
@@ -57,6 +58,8 @@ def jmkprint(fname,pyname,dirname='doc'):
     
     cmd = 'less '+dirname+'/%s.tex | pbcopy' % fname
     os.system(cmd) 
+    if optcopy:
+        shutil.copy(dirname+'/'+fname+'.png',optcopy)
 
 
 def tsdiagramjmk(salt,temp,cls=[]):
@@ -149,7 +152,7 @@ def gmtColormap(fileName,GMTPath = '~/python/cmaps/'):
       try:
           f = open(filePath)
       except:
-          print "file ",filePath, "not found"
+          print("file ",filePath, "not found")
           return None
 
       lines = f.readlines()
@@ -199,7 +202,6 @@ def gmtColormap(fileName,GMTPath = '~/python/cmaps/'):
           r = r/255.
           g = g/255.
           b = b/255.
-      print shape(x)
       xNorm = (x - x[0])/(x[-1] - x[0])
 
       red = []
@@ -279,5 +281,5 @@ def colorbarRight(pcm,ax,fig,shrink=0.7,width=0.025,gap=0.03,**kwargs):
             y0=np.min([pos.y0,y0])
     height = y1-y0
     pos2 = [x1 + gap, y0 + (1.-shrink)*height/2.,  width, height*shrink]
-    cax=axes(position=pos2)
+    cax=fig.add_axes(pos2)
     fig.colorbar(pcm,cax=cax,**kwargs)

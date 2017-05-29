@@ -93,9 +93,12 @@ if args.send:
 
     with open(os.path.expanduser('~/.markdown-to-email.json'), 'rb') as f:
         config = json.loads(f.read())
-        server = smtplib.SMTP(config['smtp'])
-        server.starttls()
-        server.login(config['username'], config['password'])
+        print(config)
+        server = smtplib.SMTP(config['smtp'],int(config['port']))
+        if config['username']:
+            print('Hi!')
+            server.starttls()
+            server.login(config['username'], config['password'])
         server.sendmail(message['From'], to, message.as_string())
         server.quit()
 elif args.preview:
